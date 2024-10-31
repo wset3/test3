@@ -1,0 +1,1130 @@
+
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
+local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
+
+local Window = Fluent:CreateWindow({
+    Title = "DUNGEON QUEST ║ NS HUB ║",
+    SubTitle = "Made By Nameless Scripts!",
+    TabWidth = 120,
+    Size = UDim2.fromOffset(550, 350),
+    Acrylic = true, -- The blur may be detectable, setting this to false disables blur entirely
+    Theme = "Dark",
+    MinimizeKey = Enum.KeyCode.LeftControl -- Used when theres no MinimizeKeybind
+})
+
+--Fluent provides Lucide Icons https://lucide.dev/icons/ for the tabs, icons are optional
+local Tabs = {
+    Main = Window:AddTab({ Title = "║ CREDITS", Icon = "scroll" }),
+    Settings = Window:AddTab({ Title = " ║ MACRO", Icon = "monitor-speaker" })
+}
+
+local Options = Fluent.Options
+
+do
+    Fluent:Notify({
+        Title = "Notification",
+        Content = "This is a notification",
+        SubContent = "SubContent", -- Optional
+        Duration = 5 -- Set to nil to make the notification not disappear
+    })
+
+    local ToggleSection = Tabs.Main:AddSection("  ━━━━━━━ [OWNER INFO/CREDITS] ━━━━━━━  ", {
+    })
+
+    Tabs.Main:AddParagraph({
+        Title = "Script is Working!",
+        Content = ""
+    })
+    
+    Tabs.Main:AddParagraph({
+        Title = "Supported Devices : Mobile- PC- Emulator",
+        Content = ""
+    })
+
+    Tabs.Main:AddParagraph({
+        Title = "Credits to Developer: Nameless Scripts",
+        Content = ""
+    })
+
+        Tabs.Main:AddParagraph({
+        Title = "YOUTUBE : Nameless Scripts",
+        Content = ""
+    })
+
+            Tabs.Main:AddParagraph({
+        Title = "DISCORD : https://discord.gg/ZkptAdmFDg",
+        Content = ""
+    })
+
+    local Tabs = {
+        Main = Window:AddTab({ Title = "║ DUNGEON", Icon = "swords" }),
+    }
+
+    local ToggleSection = Tabs.Main:AddSection(" ━━━━━━ [NORMAL + EVENT DUNGEON] ━━━━━  ", {
+    })
+
+        local Toggle = Tabs.Main:AddToggle("ToogleFastKillAura", {Title = "Fast Kill Aura [Working!]", Default = false })
+    local RunService = game:GetService("RunService")
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    
+    local dataRemoteEvent = ReplicatedStorage:WaitForChild("dataRemoteEvent")
+    local fixedSentAt = tick() -- Set once outside the loop
+    
+    local args = {
+        {
+            {
+                animationLength = 0,
+                sentAt = fixedSentAt
+            },
+            "G"
+        }
+    }
+    
+    local connection
+    local function checkToggle()
+        if connection then
+            connection:Disconnect()
+            connection = nil
+        end
+        
+        if Toggle.Value then
+            connection = RunService.Heartbeat:Connect(function()
+                dataRemoteEvent:FireServer(unpack(args))
+            end)
+        end
+    end
+    
+    Toggle:OnChanged(checkToggle)
+    checkToggle()
+
+    local Toggle = Tabs.Main:AddToggle("ToogleAutoStart", {Title = "Auto Start", Default = false })
+    local function checkToggle()
+        while Toggle.Value do
+            game:GetService("ReplicatedStorage").remotes.changeStartValue:FireServer()
+
+            wait(5)
+        end
+    end
+    
+    Toggle:OnChanged(checkToggle)
+    checkToggle()
+    
+    local VirtualInputManager = game:GetService("VirtualInputManager")
+local player = game.Players.LocalPlayer
+
+-- Attack Mode Dropdown
+local selectedValue = ""
+
+local Dropdown = Tabs.Main:AddDropdown("DropdownSelectAttack", {
+    Title = "Select A Dungeon Mode",
+    Values = {"Wave Defense", "Normal Dungeons"},
+    Multi = false,
+    Default = 1,
+})
+
+Dropdown:SetValue("Wave Defense")
+
+Dropdown:OnChanged(function(Value)
+    selectedValue = Value
+end)
+
+-- Skill Mode Dropdown
+local skillMode = "No Hold"
+
+local SkillModeDropdown = Tabs.Main:AddDropdown("DropdownSelectSkillMode", {
+    Title = "Select Skill Mode",
+    Values = {"No Hold", "Hold Skill"},
+    Multi = false,
+    Default = 1,
+})
+
+SkillModeDropdown:SetValue("No Hold")
+
+SkillModeDropdown:OnChanged(function(Value)
+    skillMode = Value
+end)
+
+-- Multi-select Dropdown for Hold Skills
+local selectedSkills = {}
+
+local HoldSkillsDropdown = Tabs.Main:AddDropdown("MultiDropdownSelectHoldSkills", {
+    Title = "Select Skills to Hold",
+    Values = {"Q", "E"},
+    Multi = true,
+    Default = {},
+})
+
+HoldSkillsDropdown:OnChanged(function(Value)
+    selectedSkills = {}
+    for skill, state in pairs(Value) do
+        if state then
+            table.insert(selectedSkills, skill)
+        end
+    end
+end)
+
+-- Toggle for Auto Skill
+local isToggleOn = false
+local ToggleAttack = Tabs.Main:AddToggle("ToogleAutoSkills", {Title = "Auto Skill Selected", Default = false })
+
+local keySequence = {Enum.KeyCode.Q, Enum.KeyCode.E}  -- Q and E key codes
+local keyPressDelay = 0.1 -- Time delay between key presses
+local holdDuration = 2 -- Duration to hold the key in seconds
+
+-- Function to simulate key press
+local function simulateKeyPress(keyCode)
+    local hold = skillMode == "Hold Skill" and table.find(selectedSkills, keyCode.Name)
+    VirtualInputManager:SendKeyEvent(true, keyCode, false, game)
+    if hold then
+        wait(holdDuration)
+    else
+        wait()
+    end
+    VirtualInputManager:SendKeyEvent(false, keyCode, false, game)
+end
+
+local function findNearestEnemy(path)
+    local character = player.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return nil end
+
+    local hrp = character.HumanoidRootPart
+    local nearestEnemy = nil
+    local minDistance = math.huge
+
+    for _, enemy in pairs(path:GetChildren()) do
+        if enemy:IsA("Model") and enemy:FindFirstChild("HumanoidRootPart") then
+            local distance = (enemy.HumanoidRootPart.Position - hrp.Position).Magnitude
+            if distance < minDistance and distance <= 50 then
+                minDistance = distance
+                nearestEnemy = enemy
+            end
+        end
+    end
+
+    return nearestEnemy
+end
+
+local function findNearestDungeonEnemy(dungeonPath)
+    local character = player.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return nil end
+
+    local hrp = character.HumanoidRootPart
+    local nearestEnemy = nil
+    local minDistance = math.huge
+
+    for _, subfolder in pairs(dungeonPath:GetChildren()) do
+        if subfolder:IsA("Folder") then
+            local enemyFolder = subfolder:FindFirstChild("enemyFolder")
+            if enemyFolder then
+                for _, enemy in pairs(enemyFolder:GetChildren()) do
+                    if enemy:IsA("Model") and enemy:FindFirstChild("HumanoidRootPart") then
+                        local distance = (enemy.HumanoidRootPart.Position - hrp.Position).Magnitude
+                        if distance < minDistance and distance <= 50 then
+                            minDistance = distance
+                            nearestEnemy = enemy
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    return nearestEnemy
+end
+
+local function findOdinReincarnation()
+    local workspace = game:GetService("Workspace")
+    local odin = workspace:FindFirstChild("Odin Reincarnation")
+
+    if odin and odin:IsA("Model") and odin:FindFirstChild("HumanoidRootPart") then
+        local character = player.Character
+        if character and character:FindFirstChild("HumanoidRootPart") then
+            local distance = (odin.HumanoidRootPart.Position - character.HumanoidRootPart.Position).Magnitude
+            if distance <= 50 then
+                return odin
+            end
+        end
+    end
+
+    return nil
+end
+
+local function HandleToggleAction()
+    while isToggleOn do
+        local nearestEnemy
+
+        if selectedValue == "Wave Defense" then
+            nearestEnemy = findNearestEnemy(game.Workspace.enemies)
+        elseif selectedValue == "Normal Dungeons" then
+            nearestEnemy = findNearestDungeonEnemy(game.Workspace.dungeon)
+        end
+
+        -- If no enemy found in the selected mode, search for Odin Reincarnation
+        if not nearestEnemy then
+            nearestEnemy = findOdinReincarnation()
+        end
+
+        if nearestEnemy then
+            for _, keyCode in ipairs(keySequence) do
+                if not isToggleOn then break end
+                simulateKeyPress(keyCode)
+                wait(keyPressDelay)
+            end
+        end
+        
+        wait(0.1)  -- Small delay to prevent excessive checking
+    end
+end
+
+ToggleAttack:OnChanged(function(value)
+    isToggleOn = value
+
+    if isToggleOn then
+        spawn(HandleToggleAction)
+    end
+end)
+
+if ToggleAttack.Value then
+    spawn(HandleToggleAction)
+end
+
+local Toggle = Tabs.Main:AddToggle("ToogleAutoRetry", {Title = "Auto Retry", Default = false })
+local function checkToggle()
+    while Toggle.Value do
+        local args = {
+            [1] = {
+                [1] = {
+                    ["\3"] = "vote",
+                    ["vote"] = true
+                },
+                [2] = "."
+            }
+        }
+        
+        game:GetService("ReplicatedStorage").dataRemoteEvent:FireServer(unpack(args))
+        wait(2)
+    end
+end
+
+Toggle:OnChanged(checkToggle)
+checkToggle()
+
+local Toggle = Tabs.Main:AddToggle("ToogleYesBonusBoss", {Title = "Auto Vote Bonus Round Boss [Northern Lands]", Default = false })
+local function checkToggle()
+    while Toggle.Value do
+        local args = {
+            [1] = {
+                [1] = {
+                    ["\3"] = "vote",
+                    ["vote"] = "bonus"
+                },
+                [2] = "."
+            }
+        }
+        
+        game:GetService("ReplicatedStorage").dataRemoteEvent:FireServer(unpack(args))
+        wait()
+    end
+end
+
+Toggle:OnChanged(checkToggle)
+checkToggle()
+    
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+-- Initialize variables
+local isToggleOn = false
+local detached = false
+local teleporting = false
+
+-- Initialize player references
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+
+-- Initialize TweenService
+local TweenService = game:GetService("TweenService")
+
+-- Function to detach the character
+local function detachCharacter()
+    if not detached then
+        detached = true
+        humanoidRootPart.Anchored = true
+        humanoidRootPart.CanCollide = false
+    end
+end
+
+-- Function to reattach the character
+local function reattachCharacter()
+    if detached then
+        detached = false
+        humanoidRootPart.Anchored = false
+        humanoidRootPart.CanCollide = true
+    end
+end
+
+-- Function to handle the toggle cycle
+local function startToggleCycle()
+    spawn(function()
+        while isToggleOn do
+            detachCharacter()
+            wait(4)
+            if not isToggleOn then break end
+            reattachCharacter()
+            wait(4)
+        end
+    end)
+end
+
+-- Enemy types and their corresponding settings
+local ENEMY_TYPES = {
+    ["Tether"] = {
+        distance = 2,
+        height = 8.5,
+        priority = 0,
+        tilt = { x = -20, y = 0, z = 0 }
+    },
+    ["Green Hand"] = {
+        distance = 5,
+        height = 0,
+        priority = 0,
+        tilt = { x = 0, y = 0, z = 0 }
+    },
+    ["Blue Hand"] = {
+        distance = 5,
+        height = 0,
+        priority = 0,
+        tilt = { x = 0, y = 0, z = 0 }
+    },
+    ["Red Hand"] = {
+        distance = 5,
+        height = 0,
+        priority = 0,
+        tilt = { x = 0, y = 0, z = 0 }
+    },
+    ["Purple Hand"] = {
+        distance = 5,
+        height = 0,
+        priority = 0,
+        tilt = { x = 0, y = 0, z = 0 }
+    },
+    ["Adelys"] = {
+        priority = 0,
+        specialPart = "EyeBeam"
+    },
+    ["Hela"] = {
+        distance = 2,
+        height = 8.5,
+        priority = 0,
+        tilt = { x = -20, y = 0, z = 0 }
+    },
+    ["Azrallik's Heart"] = {
+        distance = 2,
+        height = 8.5,
+        priority = -1,
+        tilt = { x = -20, y = 0, z = 0 }
+    },
+    ["Gregg"] = {
+        distance = 2,
+        height = 8.5,
+        tilt = { x = -20, y = 0, z = 0 }
+    },
+    ["Exalted Queensguard"] = {
+        distance = 2,
+        height = 5,
+        priority = 1,
+        tilt = { x = -45, y = 0, z = -10 }
+    },
+    ["Eldritch Reaver"] = {
+        distance = 5,
+        height = -6,
+        priority = 3,
+        tilt = { x = -20, y = 0, z = 0 }
+    },
+    ["Eldritch Prophet"] = {
+        distance = 2,
+        height = 10,
+        priority = 2,
+        tilt = { x = -45, y = 0, z = -10 }
+    },
+    ["Corrupted Growth"] = {
+        distance = 0,
+        height = -40,
+        priority = 4,
+        specialHandling = true
+    },
+    ["Voidshade"] = {
+        distance = 0,
+        height = -40,
+        priority = 4,
+        specialHandling = true
+    },
+    ["regular"] = {
+        distance = 2,
+        height = 8.5,
+        priority = 4,
+        tilt = { x = -20, y = 0, z = 0 }
+    },
+    ["Void Familiar"] = {
+        distance = 2,
+        height = 10,
+        priority = 5,
+        tilt = { x = -20, y = 0, z = 0 }
+    }
+}
+
+-- Function to check if hands are grouped
+local function findGroupedHands()
+    local handTypes = {"Green Hand", "Blue Hand", "Red Hand", "Purple Hand"}
+    local hands = {}
+    local myPosition = humanoidRootPart.Position
+    
+    -- Collect all hands
+    for _, subfolder in pairs(workspace.dungeon:GetChildren()) do
+        if subfolder:IsA("Folder") then
+            local enemyFolder = subfolder:FindFirstChild("enemyFolder")
+            if enemyFolder then
+                for _, enemy in pairs(enemyFolder:GetChildren()) do
+                    if enemy:IsA("Model") and enemy:FindFirstChild("HumanoidRootPart") and table.find(handTypes, enemy.Name) then
+                        table.insert(hands, enemy)
+                    end
+                end
+            end
+        end
+    end
+    
+    -- Check for grouped hands
+    for _, hand1 in ipairs(hands) do
+        local groupedHands = {hand1}
+        local hand1Pos = hand1.HumanoidRootPart.Position
+        
+        for _, hand2 in ipairs(hands) do
+            if hand1 ~= hand2 then
+                local distance = (hand1Pos - hand2.HumanoidRootPart.Position).magnitude
+                if distance <= 10 then
+                    table.insert(groupedHands, hand2)
+                end
+            end
+        end
+        
+        if #groupedHands > 1 then
+            table.sort(groupedHands, function(a, b)
+                return (a.HumanoidRootPart.Position - myPosition).magnitude < 
+                       (b.HumanoidRootPart.Position - myPosition).magnitude
+            end)
+            return groupedHands[1], groupedHands[1].Name
+        end
+    end
+    
+    if #hands > 0 then
+        table.sort(hands, function(a, b)
+            return (a.HumanoidRootPart.Position - myPosition).magnitude < 
+                   (b.HumanoidRootPart.Position - myPosition).magnitude
+        end)
+        return hands[1], hands[1].Name
+    end
+    
+    return nil, nil
+end
+
+-- Function to find enemies
+local function findEnemy()
+    local groupedHand, handType = findGroupedHands()
+    if groupedHand then
+        return groupedHand, handType
+    end
+    
+    local foundEnemy = nil
+    local enemyType = "regular"
+    local highestPriority = math.huge
+    local myPosition = humanoidRootPart.Position
+    local closestDistance = math.huge
+
+    for _, subfolder in pairs(workspace.dungeon:GetChildren()) do
+        if subfolder:IsA("Folder") then
+            local enemyFolder = subfolder:FindFirstChild("enemyFolder")
+            if enemyFolder then
+                for _, enemy in pairs(enemyFolder:GetChildren()) do
+                    if enemy:IsA("Model") and enemy:FindFirstChild("HumanoidRootPart") then
+                        local distance = (enemy.HumanoidRootPart.Position - myPosition).magnitude
+                        local enemyConfig = ENEMY_TYPES[enemy.Name]
+
+                        if enemy.Name == "Gregg" then
+                            return enemy, "Gregg"
+                        end
+
+                        if enemyConfig and enemyConfig.priority < highestPriority then
+                            foundEnemy = enemy
+                            enemyType = enemy.Name
+                            highestPriority = enemyConfig.priority
+                            closestDistance = distance
+                        elseif enemyConfig and enemyConfig.priority == highestPriority and distance < closestDistance then
+                            foundEnemy = enemy
+                            enemyType = enemy.Name
+                            closestDistance = distance
+                        elseif not enemyConfig and highestPriority > ENEMY_TYPES["regular"].priority then
+                            foundEnemy = enemy
+                            enemyType = "regular"
+                            highestPriority = ENEMY_TYPES["regular"].priority
+                            closestDistance = distance
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    local azralliksHeart = workspace:FindFirstChild("Azrallik's Heart")
+    if azralliksHeart and azralliksHeart:IsA("Model") and azralliksHeart:FindFirstChild("HumanoidRootPart") then
+        foundEnemy = azralliksHeart
+        enemyType = "Azrallik's Heart"
+    end
+
+    return foundEnemy, enemyType
+end
+
+-- Function to float to target
+local function floatToTarget(enemy, enemyType)
+    if enemy and not enemy:IsA("Player") then
+        local enemyConfig = ENEMY_TYPES[enemyType]
+        
+        -- Special handling for Adelys - Direct teleport to EyeBeam
+        if enemyType == "Adelys" then
+            local eyeBeam = enemy:FindFirstChild("EyeBeam")
+            if eyeBeam then
+                -- Directly set CFrame to EyeBeam's position and orientation
+                humanoidRootPart.CFrame = eyeBeam.CFrame
+                return
+            end
+        end
+
+        -- Handle other special cases
+        if enemyType == "Corrupted Growth" or enemyType == "Voidshade" then
+            local offset = Vector3.new(0, -40, 0)
+            local downwardRotation = CFrame.Angles(math.rad(78), 0, 0)
+            humanoidRootPart.CFrame = CFrame.new(enemy.HumanoidRootPart.Position + offset) * downwardRotation
+            return
+        end
+
+        -- Default handling for other enemies
+        local enemyPos = enemy.HumanoidRootPart.Position
+        local lookVector = enemy.HumanoidRootPart.CFrame.LookVector
+
+        local targetPosition = enemyPos - (lookVector * enemyConfig.distance)
+        targetPosition = Vector3.new(targetPosition.X, enemyPos.Y + enemyConfig.height, targetPosition.Z)
+
+        local facing = CFrame.new(targetPosition, enemyPos)
+
+        local tilt = CFrame.Angles(
+            math.rad(enemyConfig.tilt.x),
+            math.rad(enemyConfig.tilt.y),
+            math.rad(enemyConfig.tilt.z)
+        )
+
+        humanoidRootPart.CFrame = facing * tilt
+    end
+end
+
+-- Function to check for coin and teleport
+local function checkAndTeleportToCoin()
+    local coinModel = workspace:FindFirstChild("Coin")
+    if coinModel and coinModel:IsA("Model") then
+        local coinPart = coinModel:FindFirstChild("Coin")
+        if coinPart and coinPart:IsA("BasePart") then
+            humanoidRootPart.CFrame = coinPart.CFrame
+            return true
+        end
+    end
+    return false
+end
+
+-- Main heartbeat function
+local function onHeartbeat()
+    if isToggleOn and teleporting then
+        -- Check if start value is enabled
+        local startValue = workspace:FindFirstChild("start")
+        if not startValue or not startValue:IsA("BoolValue") or not startValue.Value then
+            return
+        end
+
+        -- Normal farming behavior
+        if not checkAndTeleportToCoin() then
+            local targetEnemy, enemyType = findEnemy()
+            if targetEnemy then
+                floatToTarget(targetEnemy, enemyType)
+            end
+        end
+    end
+end
+
+-- Create toggle UI
+local Toggle = Tabs.Main:AddToggle("ToggleNewFarm", {
+    Title = "Auto Farm Normal Dungeons",
+    Description = "This is Still In Beta Version",
+    Default = false
+})
+
+local heartbeatConnection = nil
+
+Toggle:OnChanged(function(value)
+    isToggleOn = value
+    teleporting = value
+
+    if isToggleOn then
+        startToggleCycle()
+        if heartbeatConnection then
+            heartbeatConnection:Disconnect()
+        end
+        heartbeatConnection = RunService.Heartbeat:Connect(onHeartbeat)
+    else
+        reattachCharacter()
+        if heartbeatConnection then
+            heartbeatConnection:Disconnect()
+        end
+    end
+end)
+
+-- Handle character respawning
+player.CharacterAdded:Connect(function(newCharacter)
+    character = newCharacter
+    humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+    humanoid = character:WaitForChild("Humanoid")
+
+    if isToggleOn then
+        wait(0.1)
+        detachCharacter()
+    end
+end)
+   
+
+    local Toggle = Tabs.Main:AddToggle("ToogleAntiAFK", {Title = "Anti AFK", Default = false })
+
+local function AntiAFK()
+    local Players = game:GetService("Players")
+    local VirtualUser = game:GetService("VirtualUser")
+
+    local function ResetStatus()
+    end
+
+    Players.LocalPlayer.Idled:Connect(function()
+        VirtualUser:CaptureController()
+        VirtualUser:ClickButton2(Vector2.new())
+        print("Best Scripter Nameless Scripts")
+        wait(2)
+        ResetStatus()
+    end)
+end
+
+local function checkToggle()
+    if Toggle.Value then
+        AntiAFK()
+    end
+end
+
+Toggle:OnChanged(checkToggle)
+checkToggle()
+
+
+
+          local Keybind = Tabs.Main:AddKeybind("Keybind", {
+            Title = "KeyBind",
+            Mode = "Toggle", -- Always, Toggle, Hold
+            Default = "LeftControl", -- String as the name of the keybind (MB1, MB2 for mouse buttons)
+    
+            -- Occurs when the keybind is clicked, Value is `true`/`false`
+            Callback = function(Value)
+                print("Keybind clicked!", Value)
+            end,
+    
+            -- Occurs when the keybind itself is changed, `New` is a KeyCode Enum OR a UserInputType Enum
+            ChangedCallback = function(New)
+                print("Keybind changed!", New)
+            end
+        })
+    
+        -- OnClick is only fired when you press the keybind and the mode is Toggle
+        -- Otherwise, you will have to use Keybind:GetState()
+        Keybind:OnClick(function()
+        end)
+    
+        Keybind:OnChanged(function()
+        end)
+    
+        task.spawn(function()
+            while true do
+                wait(1)
+    
+                -- example for checking if a keybind is being pressed
+                local state = Keybind:GetState()
+                if state then
+                end
+    
+                if Fluent.Unloaded then break end
+            end
+        end)
+    
+        Keybind:SetValue("MB2", "Toggle") -- Sets keybind to MB2, mode to Hold
+    
+    
+        local Input = Tabs.Main:AddInput("Input", {
+            Title = "Input",
+            Default = "Default",
+            Placeholder = "Placeholder",
+            Numeric = false, -- Only allows numbers
+            Finished = false, -- Only calls callback when you press enter
+            Callback = function(Value)
+            end
+        })
+    
+        Input:OnChanged(function()
+        end)
+    end
+    
+    
+    -- Addons:
+    -- SaveManager (Allows you to have a configuration system)
+    -- InterfaceManager (Allows you to have a interface managment system)
+    
+    -- Hand the library over to our managers
+    SaveManager:SetLibrary(Fluent)
+    InterfaceManager:SetLibrary(Fluent)
+    
+    -- Ignore keys that are used by ThemeManager.
+    -- (we dont want configs to save themes, do we?)
+    SaveManager:IgnoreThemeSettings()
+    
+    -- You can add indexes of elements the save manager should ignore
+    SaveManager:SetIgnoreIndexes({})
+    
+    -- use case for doing it this way:
+    -- a script hub could have themes in a global folder
+    -- and game configs in a separate folder per game
+    InterfaceManager:SetFolder("RobloxConfiguration")
+    SaveManager:SetFolder("FluentScriptHub/specific-game")
+    
+    InterfaceManager:BuildInterfaceSection(Tabs.Settings)
+    SaveManager:BuildConfigSection(Tabs.Settings)
+    
+    
+    Window:SelectTab(1)
+
+    local Players = game:GetService("Players")
+local PlayerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+local UserInputService = game:GetService("UserInputService")
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "ToggleButtonGui"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = PlayerGui
+
+local imageButton = Instance.new("ImageButton")
+imageButton.Name = "ToggleButton"
+imageButton.Size = UDim2.new(0, 57, 0, 48)
+imageButton.Position = UDim2.new(0.1514671, 0, 0.15256618, 0)
+imageButton.Image = "http://www.roblox.com/asset/?id=18470383829"
+imageButton.Parent = screenGui
+
+local uiCorner = Instance.new("UICorner")
+uiCorner.Parent = imageButton
+
+-- Function to toggle the Fluent UI
+local function toggleUI()
+    Window:Minimize()
+end
+
+-- Connect the toggle function to the button
+imageButton.MouseButton1Click:Connect(toggleUI)
+
+-- Draggable functionality
+local dragging
+local dragInput
+local dragStart
+local startPos
+
+local function update(input)
+    local delta = input.Position - dragStart
+    imageButton.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+
+imageButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = imageButton.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+imageButton.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        update(input)
+    end
+end)
+    
+    Fluent:Notify({
+        Title = "Made By : Nameless Scripts",
+        Content = "Dungeon Quest Script Loaded",
+        Duration = 5
+    })
+    
+    -- You can use the SaveManager:LoadAutoloadConfig() to load a config
+    -- which has been marked to be one that auto loads!
+    SaveManager:LoadAutoloadConfig()
+
+    local function startRainbowEffect(titleLabel)
+        spawn(function()
+            while true do
+                for i = 0, 1, 0.01 do
+                    if titleLabel and titleLabel.Parent then
+                        titleLabel.TextColor3 = Color3.fromHSV(i, 1, 1)
+                    end
+                    wait(0.005)
+                end
+            end
+        end)
+    end
+    
+    -- Function to force update billboard texts with higher priority
+    local function updateBillboardTexts()
+        local player = game.Players.LocalPlayer
+        if not player then return end
+        
+        -- Wait for character to load
+        if not player.Character then
+            player.CharacterAdded:Wait()
+        end
+        
+        -- Find the playerNameplate
+        local head = player.Character:WaitForChild("Head")
+        local playerNameplate = head:WaitForChild("playerNameplate")
+        
+        if playerNameplate then
+            -- Create a connection to override any changes to the text
+            local function createTextUpdater(instance, newText, textSize)
+                -- Set initial values
+                instance.Text = newText
+                instance.TextSize = textSize
+                
+                -- Connect to the Changed event to maintain our custom text
+                instance:GetPropertyChangedSignal("Text"):Connect(function()
+                    instance.Text = newText
+                end)
+                instance:GetPropertyChangedSignal("TextSize"):Connect(function()
+                    instance.TextSize = textSize
+                end)
+            end
+            
+            -- Update Health with persistent values
+            local healthBar = playerNameplate:WaitForChild("HealthBar")
+            local healthLabel = healthBar:WaitForChild("Health")
+            if healthLabel then
+                createTextUpdater(healthLabel, "INFINITE", 16)
+            end
+            
+            -- Update Level with persistent values
+            local levelLabel = playerNameplate:WaitForChild("Level")
+            if levelLabel then
+                createTextUpdater(levelLabel, "999", 16)
+            end
+            
+            -- Update Rank with persistent values
+            local rankLabel = playerNameplate:WaitForChild("Rank")
+            if rankLabel then
+                createTextUpdater(rankLabel, "1", 16)
+            end
+            
+            -- Update Title with rainbow effect and persistent values
+            local titleLabel = playerNameplate:WaitForChild("Title")
+            if titleLabel then
+                createTextUpdater(titleLabel, "GOD OF DUNGEONS!!", 20)
+                startRainbowEffect(titleLabel)
+            end
+            
+            -- Update PlayerName with persistent values
+            local nameLabel = playerNameplate:WaitForChild("PlayerName")
+            if nameLabel then
+                createTextUpdater(nameLabel, "Nameless Scripts", 18)
+            end
+        end
+    end
+    
+    -- Function to force update HUD texts with higher priority
+    local function updateHUDTexts()
+        local player = game.Players.LocalPlayer
+        if not player then return end
+        
+        -- Get the HUD with correct path
+        local playerGui = player:WaitForChild("PlayerGui")
+        local hud = playerGui:WaitForChild("HUD")
+        local mobile = hud:WaitForChild("Mobile")
+        local playerStatus = mobile:WaitForChild("PlayerStatus"):WaitForChild("PlayerStatus")
+        
+        -- Create a connection to override any changes to the text
+        local function createHUDTextUpdater(instance, newText)
+            -- Set initial values
+            instance.Text = newText
+            
+            -- Connect to the Changed event to maintain our custom text
+            instance:GetPropertyChangedSignal("Text"):Connect(function()
+                instance.Text = newText
+            end)
+        end
+        
+        -- Update Health Frame texts
+        local healthFrame = playerStatus:WaitForChild("Health")
+        local healthBarFrame = healthFrame:WaitForChild("BarFrame")
+        local healthTextLabel = healthBarFrame:WaitForChild("TextLabel")
+        local healthStatName = healthBarFrame:WaitForChild("StatName")
+        
+        if healthTextLabel then
+            createHUDTextUpdater(healthTextLabel, "INFINITE")
+        end
+        if healthStatName then
+            createHUDTextUpdater(healthStatName, "")
+        end
+        
+        -- Update XP Frame texts
+        local xpFrame = playerStatus:WaitForChild("XP")
+        local xpBarFrame = xpFrame:WaitForChild("BarFrame")
+        local xpTextLabel = xpBarFrame:WaitForChild("TextLabel")
+        local xpStatName = xpBarFrame:WaitForChild("StatName")
+        
+        if xpTextLabel then
+            createHUDTextUpdater(xpTextLabel, "INFINITE")
+        end
+        if xpStatName then
+            createHUDTextUpdater(xpStatName, "")
+        end
+        
+        -- Update PlayerName
+        local playerName = playerStatus:WaitForChild("PlayerName")
+        if playerName then
+            createHUDTextUpdater(playerName, "Nameless Scripts")
+        end
+        
+        -- Update Level TextLabel
+        local levelFrame = playerStatus:WaitForChild("Level")
+        local levelText = levelFrame:WaitForChild("TextLabel")
+        if levelText then
+            createHUDTextUpdater(levelText, "999")
+        end
+    end
+    
+    -- Connect to CharacterAdded to update texts when character spawns
+    game.Players.LocalPlayer.CharacterAdded:Connect(function()
+        updateBillboardTexts()
+        updateHUDTexts()
+    end)
+    
+    -- Initial update
+    if game.Players.LocalPlayer.Character then
+        updateBillboardTexts()
+        updateHUDTexts()
+    end
+    
+    -- Also run in a loop with less frequency to ensure texts stay updated
+    spawn(function()
+        while wait(1) do
+            pcall(updateBillboardTexts)
+            pcall(updateHUDTexts)
+        end
+    end)
+    
+    local TeleportService = game:GetService("TeleportService")
+    local Players = game:GetService("Players")
+    
+    -- Auto rejoin function with specific game ID
+    local function AutoRejoin()
+        local ts = game:GetService("TeleportService")
+        local p = game:GetService("Players").LocalPlayer
+        
+        ts:Teleport(2414851778, p)
+    end
+    
+    -- Handle kicks and disconnects through ErrorPrompt
+    game:GetService("CoreGui").RobloxPromptGui.promptOverlay.ChildAdded:Connect(function(child)
+        if child.Name == 'ErrorPrompt' then
+            local errorMessage = child:WaitForChild("MessageArea"):WaitForChild("ErrorFrame"):WaitForChild("ErrorMessage").Text
+            
+            -- List of common disconnect messages to check for
+            local disconnectMessages = {
+                "ID = 17", -- Connection attempt failed
+                "ID = 6", -- Disconnected
+                "ID = 277", -- Teleport failed
+                "ID = 279", -- Connection lost
+                "ID = 1", -- Common connection error
+                "ID = 2", -- Server crashed/closed
+                "ID = 264", -- Kicked by server
+                "ID = 266", -- Game closed
+                "Connection attempt failed",
+                "Disconnected",
+                "Game has shut down",
+                "Game has ended",
+                "You have been kicked",
+                "Connection lost",
+                "Failed to connect to the Game"
+            }
+            
+            -- Check if the error message contains any of the disconnect messages
+            for _, msg in ipairs(disconnectMessages) do
+                if errorMessage:find(msg) then
+                    wait(0.1)
+                    AutoRejoin()
+                    break
+                end
+            end
+        end
+    end)
+    
+    -- Handle disconnections through the game's connection events
+    game:GetService("NetworkClient").ConnectionEvent:Connect(function(isReady)
+        if not isReady then
+            wait(0.1)
+            AutoRejoin()
+        end
+    end)
+    
+    -- Handle general disconnect events
+    game:GetService("Players").PlayerRemoving:Connect(function(player)
+        if player == game:GetService("Players").LocalPlayer then
+            wait(0.1)
+            AutoRejoin()
+        end
+    end)
+    
+    -- Additional error handling
+    game:GetService("ScriptContext").Error:Connect(function(message)
+        local errorMessages = {
+            "ConnectFail",
+            "SocketError",
+            "NetworkError",
+            "ID = ",
+            "Connection",
+            "Teleport Failed",
+            "Server did not respond",
+            "Failed to connect"
+        }
+        
+        for _, msg in ipairs(errorMessages) do
+            if message:find(msg) then
+                wait(0.1)
+                AutoRejoin()
+                break
+            end
+        end
+    end)
